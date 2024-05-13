@@ -1,16 +1,19 @@
 import unittest
-import mysql.connector
-from myexceptions.exceptions import CustomerNotFoundException, ProductNotFoundException
+
+import mysql
+from entity.cart import Cart
 from entity.order import Order
 from entity.product import Product
-from entity.cart import Cart
+import mysql.connector
+
+from myexceptions.exceptions import CustomerNotFoundException, ProductNotFoundException
 
 
 class TestEcommerceSystem(unittest.TestCase):
     def setUp(self):
         self.cart = Cart()
-        self.product = Product("Phone", "Description", 500.0)
-        self.order = Order()
+        self.product = Product(1, "Laptop", 1000.0, "Description", 10)
+        self.order = Order(1)
         self.connection = mysql.connector.connect(
             host="localhost",
             user="root",
@@ -20,15 +23,16 @@ class TestEcommerceSystem(unittest.TestCase):
         self.cursor = self.connection.cursor()
 
     def test_product_creation(self):
-        product = Product("Laptop", "Description", 1000.0)
-        self.assertEqual(product.get_name(), "Laptop")
-        self.assertEqual(product.get_description(), "Description")
-        self.assertEqual(product.get_price(), 1000.0)
+        # product = Product(1, "Laptop", 1000.0, "Description", 10)
+        self.assertEqual(self.product.get_product_id(), 1)
+        self.assertEqual(self.product.get_name(), "Laptop")
+        self.assertEqual(self.product.get_price(), 1000.0)
+        self.assertEqual(self.product.get_description(), "Description")
+        self.assertEqual(self.product.get_stock_quantity(), 10)
 
     def test_add_to_cart(self):
-        cart = Cart()
-        cart_id = cart.get_cart_id()
-        self.assertIn(self.product, cart_id)
+        self.cart.add_product(self.product)
+        self.assertIn(self.product, self.cart.get_products())
 
     def test_order_creation(self):
         order_id = self.order.get_order_id()
@@ -36,37 +40,37 @@ class TestEcommerceSystem(unittest.TestCase):
 
     def test_customer_not_found_exception(self):
         with self.assertRaises(CustomerNotFoundException):
-            self.fetchCustomerById(self, -1, self.connection)
+            self.fetchCustomerById(-1)
 
     def test_product_not_found_exception(self):
         with self.assertRaises(ProductNotFoundException):
-            self.fetchProductById(self, -1, self.connection)
+            self.fetchProductById(-1)
 
-    def fetchCustomerById(self, customer_id, conn):
+    def fetchCustomerById(self, customer_id):
         try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute('SELECT * FROM customers WHERE id = %s', (customer_id,))
+            cursor = self.connection.cursor(dictionary=True)
+            cursor.execute('SELECT * FROM customers WHERE customer_id = %s', (customer_id,))
             customer = cursor.fetchone()
             if customer:
                 return customer
             else:
-                raise CustomerNotFoundException("Customer not found with ID: {}".format(customer_id))
+                raise CustomerNotFoundException(f"Customer not found with ID: {customer_id}")
         finally:
             self.cursor.close()
 
-    # Placeholder function
-    def fetchProductById(self, product_id, conn):
+    def fetchProductById(self, product_id):
         try:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+            cursor = self.connection.cursor(dictionary=True)
+            cursor.execute('SELECT * FROM products WHERE product_id = %s', (product_id,))
             product = cursor.fetchone()
             if product:
                 return product
             else:
-                raise ProductNotFoundException("Product not found with ID: {}".format(product_id))
+                raise ProductNotFoundException(f"Product not found with ID: {product_id}")
         finally:
             self.cursor.close()
 
 
 if __name__ == "__main__":
     unittest.main()
+
